@@ -37,7 +37,7 @@
   - less
 */
 
-// Color variables 
+// Color variables
 
 // .expandable
 @expandable-focus:              darken(#895983, 15%);
@@ -232,6 +232,24 @@
 
 .expandable {
     margin-bottom: unit(30px / @base-font-size-px, em);
+}
+
+.expandable_cue-open {
+    display: inline;
+}
+
+.expandable_cue-close {
+    display: none;
+}
+
+.expandable_target[aria-pressed="true"] {
+    .expandable_cue-open {
+        display: none;
+    }
+
+    .expandable_cue-close {
+        display: inline;
+    }
 }
 
 .expandable_target {

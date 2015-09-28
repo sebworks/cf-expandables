@@ -1,3 +1,4 @@
+
 /**
  * cf-expandables
  * https://github.com/cfpb/cf-expandables
@@ -5,110 +6,238 @@
  * A public domain work of the Consumer Financial Protection Bureau
  */
 
-(function( $ ) {
+( function( $ ) {
+  'use strict';
+  var _extend = $.extend;
 
-  $.fn.expandable = function( userSettings ) {
+  /**
+   * Returns function with throttled callback.
+   *
+   * @param {integer} duration - The title of the book.
+   * @param {Function} callback - The title of the book.
+   * @param {object} context - context in which to run callback function.
+   * @returns {Function} - Time delayed function
+   */
+  function _throttle( duration, callback, context ) {
+    var isThrottling = false;
 
-    return $( this ).each(function() {
+    return function _delay( event ) {
+      if ( isThrottling === true ) {
+        return;
+      }
+      isThrottling = true;
+      callback.call( context, event );
+      window.setTimeout( function() {
+        isThrottling = false;
+      }, duration );
+    };
+  }
 
-      var $this = $( this ),
-          $target = $this.find('.expandable_target').not( $this.find('.expandable .expandable_target') ),
-          $cueOpen = $this.find('.expandable_cue-open').not( $this.find('.expandable .expandable_cue-open') ),
-          $cueClose = $this.find('.expandable_cue-close').not( $this.find('.expandable .expandable_cue-close') ),
-          $content = $this.find('.expandable_content').not( $this.find('.expandable .expandable_content') ),
-          $groupParent = $this.parents('.expandable-group'),
-          accordion = $groupParent.length > 0 && $groupParent.data('accordion');
+  var Expandable = {
+    defaultProperties: {
+      isInAccordion:    false,
+      expandedClass:    'expandable__expanded',
+      throttleDuration: 450
+    },
 
-      if ( accordion ) {
-        var $siblings = $this.siblings('.expandable');
+    // Elements that will be cached.
+    ui: {
+      content: '.expandable_content',
+      target:  '.expandable_target'
+    },
+
+    /**
+     * Creates and customizes the Expandable.
+     *
+     * @param {object} options - Object used to customize the Expandable.
+     */
+    create: function create( options ) {
+      var properties = _extend( true, {}, Expandable.defaultProperties,
+        options );
+
+      // Using $.extend to create an instance of the Expandable.
+      // Extending dom elements is generally bad and should be
+      // avoided but we are doing so to maintain backwards compatibility.
+      // `this` is referring to the dom element.
+      _extend( this, Expandable, properties );
+      this.init();
+    },
+
+    /**
+     * Sets the initial state for the Expandable.
+     */
+    init: function init() {
+      this.isInAccordion =
+      Boolean( this.$el.parents( '.expandable-group' ).data( 'accordion' ) );
+      this.isExpanded = this.$el.hasClass( this.expandedClass );
+      this.initUI();
+      this.initEvents();
+    },
+
+    /**
+     * Removes the dom element from the dom.
+     */
+    destroy: function destroy() {
+      if ( this.$el ) {
+        this.$el.remove();
+      }
+    },
+
+    /**
+     * Initializes the initial state of the Expandable UI.
+     */
+    initUI: function initUI() {
+      var $el = this.$el;
+
+      for ( var uiKey in this.ui ) {
+        if ( this.ui.hasOwnProperty( uiKey ) ) {
+          this['$' + uiKey] = $el.find( this.ui[uiKey] + ':first' );
+        }
       }
 
-      this.init = function() {
-        // Todo: recommend using an id on all expandables so that we can use
-        // the aria-controls attribute.
-        $target.attr( 'aria-controls', $content.attr('id') );
-        if ( $this.hasClass('expandable__expanded') ) {
-          this.expand( 0 );
-        } else {
-          this.collapse( 0 );
-        }
-        $target.on( 'click', $.proxy( this.handleClick, this ) );
-      };
+      this.$target.attr( 'aria-controls', this.$content.attr( 'id' ) );
+      if ( this.isExpanded ) {
+        this.expand( 0 );
+      } else {
+        this.collapse( 0 );
+      }
+    },
 
-      this.handleClick = function( ev ) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        this.toggle();
-        if ( accordion ) {
-          $siblings.each( function( index, sibling ) {
+    /**
+     * Initializes the Expandable dom events.
+     */
+    initEvents: function initEvents() {
+      this.$el.on( 'click', '.expandable_target',
+        _throttle( this.throttleDuration, this.toggle, this )
+      );
+    },
+
+    /**
+     * Expands or collapses the Expandable.
+     *
+     * @param {object} event - jQuery event object.
+     */
+    toggle: function toggle( event ) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if ( this.isExpanded ) {
+        this.collapse();
+      } else {
+        if ( this.isInAccordion ) {
+          this.$el.siblings( '.expandable' )
+          .each( function( index, sibling ) {
             sibling.collapse();
-          });
+          } );
         }
-      };
+        this.expand();
+      }
+    },
 
-      this.toggle = function() {
-        if ( $target.attr('aria-pressed') === 'true' ) {
-          this.collapse();
-        } else {
-          this.expand();
-        }
-      };
+    /**
+     * Expands the expandable, sets the internal state
+     * and adds aria attributes.
+     *
+     * @param {integer} duration -
+     *   The time duration in which the expansion will occur.
+     */
+    expand: function expand( duration ) {
+      var $content = this.$content;
+      this.$target.attr( 'aria-pressed', 'true' );
+      $content.attr( 'aria-expanded', 'true' );
+      if ( typeof duration === 'undefined' ) {
+        duration = $.fn.expandable.calculateExpandDuration( $content.height() );
+      }
+      this.$el.addClass( this.expandedClass );
+      $content.slideDown( {
+        duration: duration,
+        easing:   'easeOutExpo'
+      } );
+      this.isExpanded = true;
+    },
 
-      this.expand = function( duration ) {
-        $cueOpen.css( 'display', 'none' );
-        $cueClose.css( 'display', 'inline' );
-        $content.attr( 'aria-expanded', 'true' );
-        $target.attr( 'aria-pressed', 'true' );
-        if ( typeof duration === 'undefined' ) {
-          duration = $.fn.expandable.calculateExpandDuration( $content.height() );
-        }
-        $this.addClass('expandable__expanded');
-        $content.slideDown({
-          duration: duration,
-          easing: 'easeOutExpo'
-        });
-      };
-
-      this.collapse = function( duration ) {
-        $cueOpen.css( 'display', 'inline' );
-        $cueClose.css( 'display', 'none' );
-        $content.attr( 'aria-expanded', 'false' );
-        $target.attr( 'aria-pressed', 'false' );
-        if ( typeof duration === 'undefined' ) {
-          duration = $.fn.expandable.calculateCollapseDuration( $content.height() );
-        }
-        $this.removeClass('expandable__expanded');
-        $content.slideUp({
-          duration: duration,
-          easing: 'easeOutExpo'
-        });
-      };
-
-      this.init();
-
-    });
-
-  };
-
-  $.fn.expandable.calculateExpandDuration = function( height ) {
-    return $.fn.expandable.constrainValue( 450, 900, height * 4 );
-  };
-
-  $.fn.expandable.calculateCollapseDuration = function( height ) {
-    return $.fn.expandable.constrainValue( 350, 900, height * 2 );
-  };
-
-  $.fn.expandable.constrainValue = function( min, max, duration ) {
-    if ( duration > max ) {
-        return max;
-    } else if ( duration < min ) {
-        return min;
-    } else {
-        return duration;
+    /**
+     * Collapses the expandable, sets the internal state
+     * and adds aria attributes.
+     *
+     * @param {integer} duration -
+     *   The time duration in which the collapse will occur.
+     */
+    collapse: function collapse( duration ) {
+      var $content = this.$content;
+      this.$target.attr( 'aria-pressed', 'false' );
+      $content.attr( 'aria-expanded', 'false' );
+      if ( typeof duration === 'undefined' ) {
+        duration = $.fn.expandable.calculateCollapseDuration( $content.height() );
+      }
+      this.$el.removeClass( this.expandedClass );
+      $content.slideUp( {
+        duration: duration,
+        easing:   'easeOutExpo'
+      } );
+      this.isExpanded = false;
     }
   };
 
-  // Auto init
-  $('.expandable').expandable();
+  // Expandable Plugin declarations.
 
-}(jQuery));
+  /**
+   * Instantiates the Expandable and configures
+   * the expandable options.
+   *
+   * @param {object} options - Object used to customize the Expandable.
+   * @returns {object} - jQuery Object.
+   */
+  $.fn.expandable = function expandable( options ) {
+    return this.each( function() {
+      ( options || ( options = {} ) ).$el = $( this );
+      Expandable.create.call( this, options );
+    } );
+  };
+
+  /**
+   * Returns the expand duration based on height parameter
+   * and internal min/max values.
+   *
+   * @param {integer} height - The height of an element.
+   * @returns {integer} - The constrained time duration.
+   */
+  $.fn.expandable.calculateExpandDuration =
+  function calculateExpandDuration( height ) {
+    return $.fn.expandable.constrainValue( 450, 900, height * 4 );
+  };
+
+  /**
+   * Returns the collapse duration based on height parameter
+   * and internal min/max values.
+   *
+   * @param {integer} height - The height of an element.
+   * @returns {integer} - The constrained time duration.
+   */
+  $.fn.expandable.calculateCollapseDuration =
+  function calculateCollapseDuration( height ) {
+    return $.fn.expandable.constrainValue( 350, 900, height * 2 );
+  };
+
+  /**
+   * Returns a time duration constrained by min and max parameters.
+   *
+   * @param {integer} min - The minimum time duration value.
+   * @param {integer} max - The maximum time duration value.
+   * @param {integer} duration - The time duration you want to constrain.
+   * @returns {integer} - The constrained time duration.
+   */
+  $.fn.expandable.constrainValue =
+  function constrainValue( min, max, duration ) {
+    if ( duration > max ) {
+      duration = max;
+    } else if ( duration < min ) {
+      duration = min;
+    }
+    return duration;
+  };
+
+  // Expandable Plugin initialization.
+  $( '.expandable' ).expandable();
+
+} )( window.jQuery );

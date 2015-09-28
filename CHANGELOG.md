@@ -2,6 +2,14 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
+## 2.0.0 - 2015-09-28
+
+### Added
+- Added capability to throttle expand / collapse function calls.
+
+### Changed
+- Re-factored code to provide general life-cycle (`create`, `init`, `destroy`).
+
 ## 0.7.0 - 2015-01-16
 
 ### Changed

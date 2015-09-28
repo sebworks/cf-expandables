@@ -382,4 +382,78 @@
     );
   });
 
+  asyncTest( 'Verify expandables click events( expand ) are throttled', function() {
+    expect( 5 );
+    var $expandable = this.$testSubjectTwo;
+    var $target = $expandable.find('.expandable_target');
+
+    // Ensure expandable is collapsed.
+    $expandable.get( 0 ).collapse( 0 );
+
+    // Simulating two clicks to test expandable throttling.
+    $target.trigger('click');
+    $target.trigger('click');
+
+    setTimeout(function() {
+      ok(
+        $expandable.find('.expandable_content').is(':visible'),
+        'The content should no longer be collapsed'
+      );
+      ok(
+        $expandable.find('.expandable_cue-close').is(':visible'),
+        'The close cue should be visible'
+      );
+      ok(
+        !$expandable.find('.expandable_cue-open').is(':visible'),
+        'The open cue should be hidden'
+      );
+      ok(
+        ( $expandable.find('.expandable_target').attr('aria-pressed') === 'true' ),
+        'The target should have an aria-pressed attribute that is true'
+      );
+      ok(
+        ( $expandable.find('.expandable_content').attr('aria-expanded') === 'true' ),
+        'The content should have an aria-expanded attribute set to true'
+      );
+      start();
+    }, 1800);
+  });
+
+  asyncTest( 'Verify expandables click events( collapse ) are throttled', function() {
+    expect( 5 );
+    var $expandable = this.$testSubjectTwo;
+    var $target = $expandable.find('.expandable_target');
+
+    // Ensure expandable is expanded.
+    $expandable.get( 0 ).expand( 0 );
+
+    // Simulating two clicks to test expandable throttling.
+    $target.trigger('click');
+    $target.trigger('click');
+
+    setTimeout(function() {
+      ok(
+        !$expandable.find('.expandable_content').is(':visible'),
+        'The content should be collapsed'
+      );
+      ok(
+        $expandable.find('.expandable_cue-open').is(':visible'),
+        'The open cue should be visible'
+      );
+      ok(
+        !$expandable.find('.expandable_cue-close').is(':visible'),
+        'The close cue should be hidden'
+      );
+      ok(
+        ( $expandable.find('.expandable_target').attr('aria-pressed') === 'false' ),
+        'The target should have an aria-pressed attribute that is false'
+      );
+      ok(
+        ( $expandable.find('.expandable_content').attr('aria-expanded') === 'false' ),
+        'The content should have an aria-expanded attribute set to true'
+      );
+      start();
+    }, 900);
+  });
+
 }( jQuery ));
